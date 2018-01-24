@@ -1,0 +1,17 @@
+{
+  "package_name": "ERC23",
+  "version": "1.0.0",
+  "description": "ERC23 Smart Contract library for Solidity",
+ 
+  "keywords": [
+    "solidity",
+    "ethereum",
+    "smart",
+    "contracts",
+    "security",
+    "erc23",
+    "erc223",
+    "erc20"
+  ],
+  "license": "MIT"
+}
