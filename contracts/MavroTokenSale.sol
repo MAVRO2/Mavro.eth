@@ -1,5 +1,12 @@
 pragma solidity ^0.4.0;
 
+ /**
+ * @title Mavro Token Sale
+ *
+ * https://mavro.org
+ * 2018
+ */
+ 
 import './MavroToken.sol';
 import '../installed_contracts/zeppelin-solidity/contracts/math/SafeMath.sol';
 import '../installed_contracts/zeppelin-solidity/contracts/ownership/Ownable.sol';
@@ -8,24 +15,30 @@ import "../installed_contracts/solidity-stringutils/strings.sol";
 import './AbstractReferalExecutor.sol';
 import './DumbExecutor.sol';
 
+
 contract MavroTokenSale is Utils, Ownable {
     using strings for *;
     using SafeMath for uint256;
 
 
-    uint256 constant   TOKEN_PRICE_D = 4700;
-    uint256 constant  PERSONAL_LIMIT_WEI = 100000000000000000000;
-    uint256 constant   MIN_CONTRIBUTION_WEI = 9999999999999999;
-    uint constant PHASES_COUNT = 2;
-    address constant VAULT = 0xE56DcbbcD1c6E76B4315bCC67A229DD946Ce661b;
-    address constant VAULT2 = 0x01924b31010dC4e4ba3E4a773BA4297e53f4056C;
-    uint256 constant BOUNTY_CAP_WEI = 40000000;
-    uint256 public  BOUNTY_TOTAL_WEI = 0;
+    uint256 constant   TOKEN_PRICE_D = 4700;                                 // Initial price in wei (denominator)
+    uint256 constant  PERSONAL_LIMIT_WEI = 100000000000000000000;            // Personal limit at phase in wei
+    uint256 constant   MIN_CONTRIBUTION_WEI = 9999999999999999;              // Minimum contribution in wei
+    uint constant PHASES_COUNT = 2;                                          // Count of phases ICO (Pre-sale and ICO)
+    address constant VAULT = 0xE56DcbbcD1c6E76B4315bCC67A229DD946Ce661b;     // First address of contribution funding
+    address constant VAULT2 = 0x01924b31010dC4e4ba3E4a773BA4297e53f4056C;    // Second address of contribution funding
+    uint256 constant BOUNTY_CAP_WEI = 40000000;                              // Bounty cap
+    uint256 public  BOUNTY_TOTAL_WEI = 0;                                    // Bounty total in wei
 
     mapping(bytes32 => uint256)  callbackQueue;
     mapping(uint => uint)  refMultipliers;
     mapping(uint => PhaseParams) public  phases;
+    
+    /**
+    * Creating object of MavroToken
+    */
     MavroToken public token = new MavroToken();
+    
     AbstractReferalExecutor abstractReferal =  new DumbExecutor();
 
     event newOraclizeQuery(string description);
@@ -42,9 +55,16 @@ contract MavroTokenSale is Utils, Ownable {
         uint BONUS_MULTIPLIER;
     }
 
+    /**
+    * Initital MavroTokenSale function
+    */
     function MavroTokenSale()
     {
         owner = msg.sender;
+        
+        /**
+        * Massive of data for the Pre-sale phase
+        *
         var prePhase = PhaseParams({
             START_TIME : 1516403990,
             END_TIME : 1519214400,
@@ -53,7 +73,9 @@ contract MavroTokenSale is Utils, Ownable {
             FUNDS_RAIZED : 0
             });
 
-
+        /**
+        * Massive of data for the ICO phase
+        */
         var mainPhase = PhaseParams({
             START_TIME : 1521072000,
             END_TIME : 1523793600,
@@ -71,6 +93,7 @@ contract MavroTokenSale is Utils, Ownable {
         refMultipliers[4] = 1;
     }
 
+    // Fallback function, being executed when an investor sends Ethereum
     function() external payable {
         uint phaseIndex = getCurrentPhaseIndex();
         require(msg.value > MIN_CONTRIBUTION_WEI);
@@ -81,10 +104,12 @@ contract MavroTokenSale is Utils, Ownable {
         forwardFunds();
     }
 
+    // Function for the MVR offchain purchasing 
     function offchainPurchase(address beneficiar, uint256 WEIequity) public onlyOwner {
         buyTokens(beneficiar, WEIequity, getCurrentPhaseIndex());
     }
 
+    // Function for transferring bounty bonus 
     function sendBountyBonus(address to, uint256 amount) onlyOwner {
         require(amount.add(BOUNTY_TOTAL_WEI) < BOUNTY_CAP_WEI);
         token.mint(to, amount);
@@ -92,18 +117,22 @@ contract MavroTokenSale is Utils, Ownable {
         BountyPaid(to, amount);
     }
 
+    // Function for transferring the ownership of the crowdsale contract
     function transferTokenOwnership(address newOwner) public onlyOwner {
         token.transferOwnership(newOwner);
     }
 
+    // Function for burning tokens
     function burnTokens(address victim, uint amount) public onlyOwner {
         token.burn(amount, victim);
     }
 
+    // Function which switching the possibility of transfer   
     function switchTransfers() public onlyOwner {
         token.switchTransfers();
     }
-
+    
+    // Function which turning the address type to the string type
     function toString(address x) returns (string) {
         bytes memory b = new bytes(20);
         for (uint i = 0; i < 20; i++)
@@ -112,10 +141,12 @@ contract MavroTokenSale is Utils, Ownable {
         return string(b);
     }
 
+    // Function for referral checkout
     function referalCheckout() onlyOwner {
         abstractReferal.phase();
     }
 
+    // Function of the revaluation of the total investing amount  
     function totalRaized() public returns (uint256){
         uint256 raized = 0;
         for (uint i = 0; i < PHASES_COUNT; i++)
@@ -127,6 +158,7 @@ contract MavroTokenSale is Utils, Ownable {
         return raized;
     }
 
+    // Function of token purchase
     function buyTokens(address beneficiar, uint256 amount, uint phaseIndex) internal {
 
         uint256 tokens = amount.mul(TOKEN_PRICE_D);
@@ -141,6 +173,7 @@ contract MavroTokenSale is Utils, Ownable {
         TokenPurchase(beneficiar, amount, tokens);
     }
 
+    // Function for transferring Funds to fund
     function forwardFunds() internal {
         uint256 half = msg.value.div(2);
         VAULT.transfer(half);
@@ -149,6 +182,7 @@ contract MavroTokenSale is Utils, Ownable {
         FundsForwarded(VAULT2);
     }
 
+    // Getting current phase index
     function getCurrentPhaseIndex() public view returns (uint){
         for (uint i = 0; i < PHASES_COUNT; i++)
         {
@@ -160,12 +194,14 @@ contract MavroTokenSale is Utils, Ownable {
         }
     }
 
+    // Setting for the referral logic
     function setAbstractReferalExecutor(address addr) onlyOwner {
         abstractReferal =  AbstractReferalExecutor(addr);
         require(abstractReferal.randomNumber() == 42);
         ReferalExecutorChanged(addr);
     }
     
+    // Setting address of MavroToken contract
     function setToken(address addr) onlyOwner {
         token =  MavroToken(addr);
 
